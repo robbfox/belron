@@ -1,0 +1,6 @@
+sources:
+  - name: raw_repairs_data  # <--- You gave it the nickname 'raw_repairs_data'
+    database: sparta-showcase
+    schema: raw_data
+    tables:
+      - name: raw_repairs
