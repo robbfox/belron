@@ -8,7 +8,14 @@ cleaned as (
 
     select
         CONCAT("JOB", CAST(job_ID AS STRING)) AS Job_ID,
-        repair_date,
+        COALESCE(
+            SAFE.PARSE_DATE('%d-%b-%y', repair_date),  -- e.g., 21-Oct-25
+            CASE
+                WHEN SAFE_CAST(SPLIT(repair_date, '/')[1] AS INT64) > 12
+                    THEN SAFE.PARSE_DATE('%m/%d/%Y', repair_date)  -- US format
+                ELSE SAFE.PARSE_DATE('%d/%m/%Y', repair_date)       -- UK format
+            END
+        ) AS repair_date,
         region,
         city,
         garage_name,
