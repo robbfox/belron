@@ -3,16 +3,11 @@ with source as (
     select * from {{ source('raw_repairs_data', 'raw_repairs') }}
 
 ),
-with source as (
-
-    select * from {{ source('raw_repairs_data', 'raw_repairs') }}
-
-),
 
 cleaned as (
 
     select
-        job_id,
+        CONCAT("JOB", CAST(job_ID AS STRING)) AS Job_ID,
         repair_date,
         region,
         city,
@@ -77,10 +72,10 @@ cleaned as (
         customer_mobile,
         customer_postcode,
         insurance_claimed,
-        technician_id,
+        CONCAT("TECH", CAST(technician_id AS STRING)) AS technician_id,
         technician_name,
         technician_mobile,
-        customer_id,
+        CONCAT("CUST", CAST(job_ID AS STRING)) AS customer_id,
         vehicle_age_in_years,
         weather_condition,
         traffic_level,
