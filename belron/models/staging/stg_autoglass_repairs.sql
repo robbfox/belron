@@ -6,6 +6,7 @@ with source as (
 
 cleaned as (
 
+    SELECT DISTINCT * FROM (
     select
         CONCAT("JOB", CAST(job_ID AS STRING)) AS Job_ID,
         COALESCE(
@@ -66,23 +67,46 @@ cleaned as (
             -- Rule 3 (The Default): For everything else, apply TRIM and INITCAP
             ELSE INITCAP(TRIM(Vehicle_Model))
         END AS vehicle_model,
-        glass_type,
-        window_position,
-        damage_type,
-        repair_type,
-        repair_cost,
-        glass_cost,
+        -- models/staging/stg_repairs.sql
+
+        -- Standardize Glass_Type names
+        CASE
+            -- Rule 1: Handle the explicit null marker first
+            WHEN UPPER(TRIM(Glass_Type)) = 'N/A' THEN NULL
+           
+            WHEN UPPER(TRIM(Glass_Type)) = 'OEM' THEN 'OEM'
+            ELSE INITCAP(TRIM(Glass_Type))
+        END AS glass_type,
+        CASE
+            WHEN UPPER(TRIM(REPLACE(Window_Position, '_', ' '))) IN ('WINDSHIELD', 'WIND SCREEN')
+                THEN 'Windscreen'
+            WHEN UPPER(TRIM(Window_Position)) = 'N/A'
+                THEN NULL
+            ELSE INITCAP(TRIM(Window_Position))
+        END AS window_position,
+        INITCAP(TRIM(Damage_Type)) AS damage_type,
+        INITCAP(TRIM(Repair_Type)) AS repair_type,
+       {{ clean_currency('repair_cost') }} AS repair_cost,
+       {{ clean_currency('glass_cost') }} AS glass_cost,
         profit,
         customer_rating,
-        customer_name,
+        {{ parse_full_name('customer_name') }}.prefix AS customer_prefix,
+        {{ parse_full_name('customer_name') }}.first_name AS customer_first_name,
+        {{ parse_full_name('customer_name') }}.surname AS customer_surname,
         customer_email,
         customer_mobile,
         customer_postcode,
-        insurance_claimed,
+        CASE
+        WHEN LOWER(insurance_claimed) IN ('yes', 'y', 'true', '1') THEN TRUE
+        WHEN LOWER(insurance_claimed) IN ('no', 'n', 'false', '0') THEN FALSE
+        ELSE NULL
+        END AS insurance_claimed,
         CONCAT("TECH", CAST(technician_id AS STRING)) AS technician_id,
-        technician_name,
+        {{ parse_full_name('technician_name') }}.prefix AS technician_prefix,
+        {{ parse_full_name('technician_name') }}.first_name AS technician_first_name,
+        {{ parse_full_name('technician_name') }}.surname AS technician_surname,
         technician_mobile,
-        CONCAT("CUST", CAST(job_ID AS STRING)) AS customer_id,
+        CONCAT("CUST", CAST(customer_id AS STRING)) AS customer_id,
         vehicle_age_in_years,
         weather_condition,
         traffic_level,
@@ -90,6 +114,7 @@ cleaned as (
 
     from source
 
+)
 )
 
 select * from cleaned
