@@ -93,7 +93,48 @@ cleaned as (
         {{ parse_full_name('customer_name') }}.prefix AS customer_prefix,
         {{ parse_full_name('customer_name') }}.first_name AS customer_first_name,
         {{ parse_full_name('customer_name') }}.surname AS customer_surname,
-        customer_email,
+        -- models/staging/stg_autoglass_repairs.sql
+
+        -- Clean and validate the customer_email column
+        CASE
+            -- First, check if the email is already structurally valid.
+            WHEN REGEXP_CONTAINS(LOWER(TRIM(customer_email)), r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+                THEN LOWER(TRIM(customer_email))
+
+            -- Next, fix common errors where '@' is missing before a known major provider.
+            WHEN customer_email LIKE '%gmail.com' AND NOT customer_email LIKE '%@%'
+                THEN REGEXP_REPLACE(LOWER(TRIM(customer_email)), r'(gmail\.com)', r'@\1')
+            
+            WHEN customer_email LIKE '%yahoo.co.uk' AND NOT customer_email LIKE '%@%'
+                THEN REGEXP_REPLACE(LOWER(TRIM(customer_email)), r'(yahoo\.co\.uk)', r'@\1')
+
+            -- NEWLY ADDED to handle yahoo.com
+            WHEN customer_email LIKE '%yahoo.com' AND NOT customer_email LIKE '%@%'
+                THEN REGEXP_REPLACE(LOWER(TRIM(customer_email)), r'(yahoo\.com)', r'@\1')
+
+            WHEN customer_email LIKE '%hotmail.com' AND NOT customer_email LIKE '%@%'
+                THEN REGEXP_REPLACE(LOWER(TRIM(customer_email)), r'(hotmail\.com)', r'@\1')
+
+            -- NEWLY ADDED to handle hotmail.co.uk
+            WHEN customer_email LIKE '%hotmail.co.uk' AND NOT customer_email LIKE '%@%'
+                THEN REGEXP_REPLACE(LOWER(TRIM(customer_email)), r'(hotmail\.co\.uk)', r'@\1')
+            
+            WHEN customer_email LIKE '%outlook.com' AND NOT customer_email LIKE '%@%'
+                THEN REGEXP_REPLACE(LOWER(TRIM(customer_email)), r'(outlook\.com)', r'@\1')
+
+            WHEN customer_email LIKE '%example.com' AND NOT customer_email LIKE '%@%'
+                THEN REGEXP_REPLACE(LOWER(TRIM(customer_email)), r'(example\.com)', r'@\1')
+
+            WHEN customer_email LIKE '%example.net' AND NOT customer_email LIKE '%@%'
+                THEN REGEXP_REPLACE(LOWER(TRIM(customer_email)), r'(example\.net)', r'@\1')
+
+            WHEN customer_email LIKE '%example.org' AND NOT customer_email LIKE '%@%'
+                THEN REGEXP_REPLACE(LOWER(TRIM(customer_email)), r'(example\.org)', r'@\1')
+                
+            
+            -- If none of the above conditions are met, the email is invalid.
+            ELSE NULL
+        END AS customer_email,
         customer_mobile,
         customer_postcode,
         CASE
