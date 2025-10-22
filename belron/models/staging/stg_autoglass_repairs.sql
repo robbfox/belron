@@ -135,7 +135,7 @@ cleaned as (
             -- If none of the above conditions are met, the email is invalid.
             ELSE NULL
         END AS customer_email,
-        customer_mobile,
+        {{ standardize_uk_mobile('customer_mobile') }} AS customer_mobile,
         customer_postcode,
         CASE
         WHEN LOWER(insurance_claimed) IN ('yes', 'y', 'true', '1') THEN TRUE
@@ -146,7 +146,7 @@ cleaned as (
         {{ parse_full_name('technician_name') }}.prefix AS technician_prefix,
         {{ parse_full_name('technician_name') }}.first_name AS technician_first_name,
         {{ parse_full_name('technician_name') }}.surname AS technician_surname,
-        technician_mobile,
+        {{ standardize_uk_mobile('technician_mobile') }} AS technician_mobile,
         CONCAT("CUST", CAST(customer_id AS STRING)) AS customer_id,
         vehicle_age_in_years,
         weather_condition,
