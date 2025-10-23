@@ -3,11 +3,11 @@ WITH source AS (
     FROM {{ source('raw_repairs_data', 'raw_repairs_data') }}
 ),
 
--- Lookup table for missing regions - FIX: Trim the region values here
+-- Lookup table for missing regions
 region_lookup AS (
     SELECT
         LOWER(TRIM(city)) AS city,
-        ANY_VALUE(TRIM(region)) AS region  -- Added TRIM here
+        ANY_VALUE(TRIM(region)) AS region  
     FROM source
     WHERE TRIM(region) IS NOT NULL
       AND TRIM(region) != 'N/A'
@@ -15,16 +15,17 @@ region_lookup AS (
       AND TRIM(city) IS NOT NULL
       AND TRIM(city) != 'N/A'
       AND TRIM(city) != ''
-    GROUP BY LOWER(TRIM(city))  -- Added TRIM here too
+    GROUP BY LOWER(TRIM(city))  
 ),
 
 cleaned AS (
     SELECT DISTINCT * 
     FROM (
         SELECT
-
+            -- Standardise job ID
             CONCAT("JOB", CAST(job_ID AS STRING)) AS Job_ID,
 
+            -- Parse repair dates (handles multiple formats)
             COALESCE(
                 SAFE.PARSE_DATE('%d-%b-%y', repair_date),
                 CASE
@@ -34,20 +35,23 @@ cleaned AS (
                 END
             ) AS repair_date,
 
-            -- FIX: Trim both sources and wrap the entire result
+            -- Standardise region using lookup table
             TRIM(
                 INITCAP(
                     COALESCE(
                         NULLIF(TRIM(source.region), 'N/A'),
-                        TRIM(rl.region)  -- Added TRIM here
+                        TRIM(rl.region) 
                     )
                 )
             ) AS region,
 
+            -- Clean city 
             TRIM(INITCAP(NULLIF(TRIM(source.city), 'N/A'))) AS city,
 
-            TRIM(garage_name) AS garage_name,  -- Added TRIM
+            -- Clean garage name
+            TRIM(garage_name) AS garage_name, 
 
+            -- Standardise garage type
             CASE 
                 WHEN UPPER(TRIM(Garage_Type)) IN ('FRANCHSIE', 'CHAIN') THEN 'Franchise'
                 WHEN UPPER(TRIM(Garage_Type)) = 'INDEPENDENT' THEN 'Independent' 
@@ -55,6 +59,7 @@ cleaned AS (
                 ELSE NULL 
             END AS garage_type,
 
+            -- Standardise vehicle brand, type, and model
             CASE
                 WHEN UPPER(TRIM(Vehicle_Brand)) = 'BMW' THEN 'BMW'
                 WHEN UPPER(TRIM(Vehicle_Brand)) = 'N/A' THEN NULL
@@ -76,12 +81,14 @@ cleaned AS (
                 ELSE INITCAP(TRIM(Vehicle_Model))
             END AS vehicle_model,
 
+            -- Standardise glass type
             CASE
                 WHEN UPPER(TRIM(Glass_Type)) = 'N/A' THEN NULL
                 WHEN UPPER(TRIM(Glass_Type)) = 'OEM' THEN 'OEM'
                 ELSE INITCAP(TRIM(Glass_Type))
             END AS glass_type,
 
+            -- Standardise window position
             CASE
                 WHEN UPPER(TRIM(REPLACE(Window_Position, '_', ' '))) IN ('WINDSHIELD', 'WIND SCREEN')
                     THEN 'Windscreen'
@@ -90,6 +97,7 @@ cleaned AS (
                 ELSE INITCAP(TRIM(Window_Position))
             END AS window_position,
 
+            -- Standardise damage and repair type
             CASE
                 WHEN UPPER(TRIM(Damage_Type)) = 'N/A' THEN NULL
                 ELSE INITCAP(TRIM(Damage_Type))
@@ -99,11 +107,13 @@ cleaned AS (
                 WHEN UPPER(TRIM(Repair_Type)) = 'N/A' THEN NULL
                 ELSE INITCAP(TRIM(Repair_Type))
             END AS repair_type,
-        
+
+            -- Clean and round costs
             {{ clean_currency('repair_cost') }} AS repair_cost,
             {{ clean_currency('glass_cost') }} AS glass_cost,
             ROUND({{ clean_currency('repair_cost') }} - {{ clean_currency('glass_cost') }}, 2) AS profit,
         
+            -- Standardise customer rating
             CAST(
                 CASE
                     WHEN LOWER(TRIM(customer_rating)) IN ('n/a', '') THEN NULL
@@ -113,10 +123,12 @@ cleaned AS (
                 END AS INT64
             ) AS customer_rating,
             
+            -- Parse customer names
             {{ parse_full_name('customer_name') }}.prefix AS customer_prefix,
             {{ parse_full_name('customer_name') }}.first_name AS customer_first_name,
             {{ parse_full_name('customer_name') }}.surname AS customer_surname,
             
+            -- Clean and validate emails
             CASE
                 WHEN REGEXP_CONTAINS(LOWER(TRIM(customer_email)), r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
                     THEN LOWER(TRIM(customer_email))
@@ -141,31 +153,41 @@ cleaned AS (
                 ELSE NULL
             END AS customer_email,
 
+            -- Standardise UK mobiles
             {{ standardise_uk_mobiles('customer_mobile') }} AS customer_mobile,
             
+            -- Standardize UK postcodes
+            -- - Null out invalid markers ('N/A', empty string)
+            -- - Uppercase all characters
+            -- - Reduce multiple spaces to single space
             CASE
                 WHEN UPPER(TRIM(customer_postcode)) IN ('N/A', '') THEN NULL
-                ELSE UPPER(TRIM(customer_postcode))
+                ELSE REGEXP_REPLACE(UPPER(TRIM(customer_postcode)), r'\s+', ' ')
             END AS customer_postcode,
 
+            -- Boolean conversion of insurance claimed
             CASE
                 WHEN LOWER(TRIM(insurance_claimed)) IN ('yes', 'y', 'true', '1') THEN TRUE
                 WHEN LOWER(TRIM(insurance_claimed)) IN ('no', 'n', 'false', '0') THEN FALSE
                 ELSE NULL
             END AS insurance_claimed,
 
+            -- Standardise technician ID
             CONCAT("TECH", CAST(technician_id AS STRING)) AS technician_id,
-            
+
+            -- Parse technician names
             {{ parse_full_name('technician_name') }}.prefix AS technician_prefix,
             {{ parse_full_name('technician_name') }}.first_name AS technician_first_name,
             {{ parse_full_name('technician_name') }}.surname AS technician_surname,
 
             {{ standardise_uk_mobiles('technician_mobile') }} AS technician_mobile,
 
+            -- Standardise customer ID
             CONCAT("CUST", CAST(customer_id AS STRING)) AS customer_id,
 
             vehicle_age_in_years, 
 
+            -- Standardize weather conditions and traffic level
             CASE
                 WHEN LOWER(TRIM(weather_condition)) IN ('n/a', '', 'na') THEN NULL
                 WHEN LOWER(TRIM(weather_condition)) IN ('clear') THEN 'Clear'
@@ -186,7 +208,7 @@ cleaned AS (
 
             job_duration_in_hours 
 
-        FROM source
+        FROM {{ source('raw_repairs_data', 'raw_repairs_data') }} AS source 
         LEFT JOIN region_lookup rl
             ON LOWER(TRIM(source.city)) = rl.city  -- Added TRIM here too
     )
