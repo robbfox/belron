@@ -1,6 +1,9 @@
+version: 2
+
 sources:
-  - name: raw_repairs_data  # <--- You gave it the nickname 'raw_repairs_data'
-    database: sparta-showcase
-    schema: raw_data
+  - name: raw_repairs_data
+    database: sparta-showcase  # Your GCP project ID
+    schema: raw_data_us        # Your NEW BigQuery dataset
     tables:
-      - name: raw_repairs
+      - name: raw_repairs_data  # Your table name
+        description: "Raw repairs data from operational system"
