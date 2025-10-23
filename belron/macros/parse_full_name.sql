@@ -6,7 +6,7 @@ STRUCT(
         THEN INITCAP(SPLIT(TRIM({{ column_name }}), ' ')[SAFE_OFFSET(0)])
         ELSE NULL
     END AS prefix,
-
+ 
     -- Extract first name
     SPLIT(
         CASE
@@ -23,7 +23,7 @@ STRUCT(
         END,
         ' '
     )[SAFE_OFFSET(0)] AS first_name,
-
+ 
     -- Extract surname
     NULLIF(
         ARRAY_TO_STRING(
