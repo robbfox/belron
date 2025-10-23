@@ -174,7 +174,7 @@ cleaned AS (
                 ELSE NULL
             END AS customer_email,
 
-            {{ clean_mobile('customer_mobile') }} AS customer_mobile,
+            {{ standardise_uk_mobiles('customer_mobile') }} AS customer_mobile,
             
             CASE
                 WHEN UPPER(TRIM(customer_postcode)) IN ('N/A', '') THEN NULL
@@ -193,7 +193,7 @@ cleaned AS (
             {{ parse_full_name('technician_name') }}.first_name AS technician_first_name,
             {{ parse_full_name('technician_name') }}.surname AS technician_surname,
 
-            {{ clean_mobile('technician_mobile') }} AS technician_mobile,
+            {{ standardise_uk_mobiles('technician_mobile') }} AS technician_mobile,
 
             CONCAT("CUST", CAST(customer_id AS STRING)) AS customer_id,
 
