@@ -1,0 +1,112 @@
+version: 2
+
+models:
+  - name: stg_autoglass_repairs
+    description: "Cleaned and standardised Autoglass repair data prepared for analytics and Power BI."
+    columns:
+
+      - name: job_id
+        description: "Unique job identifier, prefixed with JOB"
+        tests:
+          - not_null
+          - unique
+
+      - name: customer_id
+        description: "Unique customer identifier, prefixed with CUST"
+        tests:
+          - not_null
+
+      - name: technician_id
+        description: "Unique technician identifier, prefixed with TECH"
+        tests:
+          - not_null
+
+      - name: repair_date
+        description: "Parsed repair date, cleaned and formatted"
+        tests:
+          - not_null
+
+      - name: region
+        description: "Standardised region name from source or lookup table"
+        tests: []   # allow nulls for unmatched cities
+
+      - name: city
+        description: "Cleaned city name"
+        tests: []   # optional — cleaned via INITCAP and NULLIF
+
+      - name: garage_type
+        description: "Garage category"
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['Franchise', 'Independent', 'Mobile']
+
+      - name: vehicle_type
+        description: "Vehicle type categorisation"
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['SUV', 'Truck', 'Motorcycle', 'Bus', 'Campervan', 'Hatchback', 'Estate', 'Sedan', 'Van', None]
+
+
+      - name: glass_type
+        description: "Type of glass fitted (OEM or other)"
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['OEM', 'Acoustic', 'Hydrophobic-Coated', 'Tinted', 'Heated', 'Solar-Control', 'Tempered', 'Laminated', 'Privacy']
+
+      - name: window_position
+        description: "Standardised window position (Windscreen, Rear, etc.)"
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['Windscreen', 'Front Windshield', 'Vent Glass', 'Tailgate Glass', 'Side Panel Glass', 'Front Left Door', 'Front Right Door', 'Rear Window', 'Quarter Glass', 'Rear Left Door', 'Rear Right Door', 'Sunroof']
+
+      - name: damage_type
+        description: "Type of damage reported"
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['Chip', 'Crack', 'Scratch', 'Shatter', 'Other']
+
+      - name: repair_type
+        description: "Type of repair performed"
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['Reseal', 'Repair', 'Crack Repair', 'Adas Calibration', 'Chip Repair', 'Replacement']
+              severity: warn
+
+
+
+      - name: customer_email
+        description: "Validated and cleaned customer email address"
+        tests:
+          - not_null:
+              severity: warn  # flags missing emails without failing
+
+      - name: customer_postcode
+        description: "Standardised UK postcode, uppercased and cleaned"
+        tests: []  # optional regex test can be added
+
+      - name: insurance_claimed
+        description: "Boolean flag for insurance claim status"
+        tests:
+          - accepted_values:
+              arguments:
+                values: [true, false, None]  
+
+      - name: weather_condition
+        description: "Normalised weather conditions"
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['Clear', 'Rain', 'Fog', 'Snow', 'Windy']
+
+      - name: traffic_level
+        description: "Standardised traffic level"
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['Low', 'Medium', 'High', 'Heavy']

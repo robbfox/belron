@@ -67,13 +67,14 @@ cleaned AS (
             END AS vehicle_brand,
 
             CASE
-                WHEN UPPER(TRIM(Vehicle_Type)) = 'SUV' THEN 'SUV'
-                WHEN UPPER(TRIM(Vehicle_Type)) = 'CAR' THEN 'Car'
-                WHEN UPPER(TRIM(Vehicle_Type)) = 'VAN' THEN 'Van'
-                WHEN UPPER(TRIM(Vehicle_Type)) = 'TRUCK' THEN 'Truck'
-                WHEN UPPER(TRIM(Vehicle_Type)) IN ('MOTORCYCLE', 'MOTORBIKE') THEN 'Motorcycle'
-                ELSE NULL
+                WHEN UPPER(TRIM(Vehicle_Type)) = 'N/A' THEN NULL
+                WHEN UPPER(TRIM(Vehicle_Type)) IN ('SUV', 'SPORT UTILITY VEHICLE') THEN 'SUV'
+                WHEN UPPER(TRIM(Vehicle_Type)) IN ('TRUCK', 'LORRY') THEN 'Truck'
+                WHEN UPPER(TRIM(Vehicle_Type)) IN ('MOTORCYCLE', 'MOTORBIKE', 'BIKE') THEN 'Motorcycle'
+                WHEN UPPER(TRIM(Vehicle_Type)) IN ('BUS', 'MINIBUS', 'COACH') THEN 'Bus'
+                ELSE INITCAP(TRIM(Vehicle_Type))  -- Keep Estate, Hatchback, Sedan etc as-is
             END AS vehicle_type,
+
 
             CASE
                 WHEN UPPER(TRIM(Vehicle_Model)) = 'N/A' THEN NULL
@@ -210,7 +211,7 @@ cleaned AS (
 
         FROM {{ source('raw_repairs_data', 'raw_repairs_data') }} AS source 
         LEFT JOIN region_lookup rl
-            ON LOWER(TRIM(source.city)) = rl.city  -- Added TRIM here too
+            ON LOWER(TRIM(source.city)) = rl.city 
     )
 )
 
