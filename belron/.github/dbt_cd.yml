@@ -1,0 +1,120 @@
+name: DBT CD - Build and Deploy (Workload Identity)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'models/**'
+      - 'tests/**'
+      - 'macros/**'
+      - 'dbt_project.yml'
+  
+  schedule:
+    - cron: '0 6 * * *'  # Runs at 6 AM UTC daily
+  
+  workflow_dispatch:
+
+# Required for Workload Identity Federation
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: Install DBT and dependencies
+        run: |
+          pip install dbt-bigquery
+          pip install -r requirements.txt
+
+      - name: Create profiles.yml
+        run: |
+          mkdir -p ~/.dbt
+          cat << EOF > ~/.dbt/profiles.yml
+          ${{ secrets.DBT_PROJECT_NAME }}:
+            target: prod
+            outputs:
+              prod:
+                type: bigquery
+                method: oauth
+                project: ${{ secrets.GCP_PROJECT_ID }}
+                dataset: ${{ secrets.DBT_DATASET }}
+                threads: 4
+                location: ${{ secrets.GCP_LOCATION }}
+          EOF
+
+      - name: DBT Debug
+        run: dbt debug
+
+      - name: DBT Deps
+        run: dbt deps
+
+      - name: Run DBT Tests First
+        id: dbt_test
+        run: |
+          dbt test --fail-fast
+        continue-on-error: false
+
+      - name: DBT Build (only if tests pass)
+        if: success()
+        run: |
+          dbt build --exclude test_type:data
+
+      - name: Generate and upload documentation
+        if: success()
+        run: |
+          dbt docs generate
+
+      - name: Upload DBT artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: dbt-artifacts
+          path: |
+            target/manifest.json
+            target/run_results.json
+            target/catalog.json
+
+      - name: Notify on failure
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+              body: '❌ DBT build failed. Please check the workflow logs.'
+            })
+
+      - name: Notify on success
+        if: success()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+              body: '✅ DBT build completed successfully!'
+            })
