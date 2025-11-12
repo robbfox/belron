@@ -37,47 +37,44 @@ models:
       - name: garage_type
         description: "Garage category"
         tests:
-          - accepted_values:
-              arguments:
-                values: ['Franchise', 'Independent', 'Mobile']
+          - unmapped_values:
+              column_name: garage_type
+              allowed_values: ['Franchise', 'Independent', 'Mobile']
 
       - name: vehicle_type
-        description: "Vehicle type categorisation"
+        description: "Standardised vehicle type"
         tests:
-          - accepted_values:
-              arguments:
-                values: ['SUV', 'Truck', 'Motorcycle', 'Bus', 'Campervan', 'Hatchback', 'Estate', 'Sedan', 'Van', None]
-
+          - unmapped_values:
+              column_name: vehicle_type
+              allowed_values: ['SUV', 'Truck', 'Motorcycle', 'Bus', 'Campervan', 'Hatchback', 'Estate', 'Sedan', 'Van']
 
       - name: glass_type
         description: "Type of glass fitted (OEM or other)"
         tests:
-          - accepted_values:
-              arguments:
-                values: ['OEM', 'Acoustic', 'Hydrophobic-Coated', 'Tinted', 'Heated', 'Solar-Control', 'Tempered', 'Laminated', 'Privacy']
+          - unmapped_values:
+              column_name: glass_type
+              allowed_values: ['OEM', 'Acoustic', 'Hydrophobic-Coated', 'Tinted', 'Heated', 'Solar-Control', 'Tempered', 'Laminated', 'Privacy']
 
       - name: window_position
         description: "Standardised window position (Windscreen, Rear, etc.)"
         tests:
-          - accepted_values:
-              arguments:
-                values: ['Windscreen', 'Front Windshield', 'Vent Glass', 'Tailgate Glass', 'Side Panel Glass', 'Front Left Door', 'Front Right Door', 'Rear Window', 'Quarter Glass', 'Rear Left Door', 'Rear Right Door', 'Sunroof']
+          - unmapped_values:
+              column_name: window_position
+              allowed_values: ['Windscreen', 'Front Windshield', 'Vent Glass', 'Tailgate Glass', 'Side Panel Glass', 'Front Left Door', 'Front Right Door', 'Rear Window', 'Quarter Glass', 'Rear Left Door', 'Rear Right Door', 'Sunroof']
 
       - name: damage_type
         description: "Type of damage reported"
         tests:
-          - accepted_values:
-              arguments:
-                values: ['Chip', 'Crack', 'Scratch', 'Shatter', 'Other']
+          - unmapped_values:
+              column_name: damage_type
+              allowed_values: ['Chip', 'Crack', 'Scratch', 'Shatter', 'Other']
 
       - name: repair_type
         description: "Type of repair performed"
         tests:
-          - accepted_values:
-              arguments:
-                values: ['Reseal', 'Repair', 'Crack Repair', 'Adas Calibration', 'Chip Repair', 'Replacement']
-              severity: warn
-
+          - unmapped_values:
+              column_name: repair_type
+              allowed_values: ['Reseal', 'Repair', 'Crack Repair', 'Adas Calibration', 'Chip Repair', 'Replacement']
 
 
       - name: customer_email
@@ -93,20 +90,18 @@ models:
       - name: insurance_claimed
         description: "Boolean flag for insurance claim status"
         tests:
-          - accepted_values:
-              arguments:
-                values: [true, false, None]  
+          - valid_boolean
 
       - name: weather_condition
         description: "Normalised weather conditions"
         tests:
-          - accepted_values:
-              arguments:
-                values: ['Clear', 'Rain', 'Fog', 'Snow', 'Windy']
+          - unmapped_values:
+              column_name: weather_condition
+              allowed_values: ['Clear', 'Rain', 'Fog', 'Snow', 'Windy']
 
       - name: traffic_level
         description: "Standardised traffic level"
         tests:
-          - accepted_values:
-              arguments:
-                values: ['Low', 'Medium', 'High', 'Heavy']
+          - unmapped_values:
+              column_name: traffic_level
+              allowed_values: ['Low', 'Medium', 'High', 'Heavy']

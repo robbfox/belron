@@ -18,6 +18,56 @@ region_lookup AS (
     GROUP BY LOWER(TRIM(city))  
 ),
 
+
+-- Vehicle type mapping from seeds
+vehicle_map AS (
+    SELECT *
+    FROM {{ ref('vehicle_type_mapping') }}
+),
+
+-- Garage type mapping from seeds
+garage_type_map AS (
+    SELECT *
+    FROM {{ ref('garage_type_mapping') }}
+),
+
+-- Glass type mapping from seeds
+glass_type_map AS (
+    SELECT *
+    FROM {{ ref('glass_type_mapping') }}
+),
+
+-- Damage type mapping from seeds
+damage_type_map AS (
+    SELECT *
+    FROM {{ ref('damage_type_mapping') }}
+),
+
+-- Repair type mapping from seeds
+repair_type_map AS (
+    SELECT *
+    FROM {{ ref('repair_type_mapping') }}
+),
+
+-- Window position mapping from seeds
+window_position_map AS (
+    SELECT *
+    FROM {{ ref('window_position_mapping') }}
+),
+
+-- Weather Condition mapping
+weather_condition_map AS (
+    SELECT *
+    FROM {{ ref('weather_condition_mapping') }}
+),
+
+-- Traffic level mapping
+traffic_level_map AS (
+    SELECT *
+    FROM {{ ref('traffic_level_mapping') }}
+),
+
+
 cleaned AS (
     SELECT DISTINCT * 
     FROM (
@@ -52,12 +102,7 @@ cleaned AS (
             TRIM(garage_name) AS garage_name, 
 
             -- Standardise garage type
-            CASE 
-                WHEN UPPER(TRIM(Garage_Type)) IN ('FRANCHSIE', 'CHAIN') THEN 'Franchise'
-                WHEN UPPER(TRIM(Garage_Type)) = 'INDEPENDENT' THEN 'Independent' 
-                WHEN UPPER(TRIM(Garage_Type)) = 'MOBILE' THEN 'Mobile' 
-                ELSE NULL 
-            END AS garage_type,
+            gatm.clean_value AS garage_type,
 
             -- Standardise vehicle brand, type, and model
             CASE
@@ -66,14 +111,8 @@ cleaned AS (
                 ELSE INITCAP(TRIM(Vehicle_Brand))
             END AS vehicle_brand,
 
-            CASE
-                WHEN UPPER(TRIM(Vehicle_Type)) = 'N/A' THEN NULL
-                WHEN UPPER(TRIM(Vehicle_Type)) IN ('SUV', 'SPORT UTILITY VEHICLE') THEN 'SUV'
-                WHEN UPPER(TRIM(Vehicle_Type)) IN ('TRUCK', 'LORRY') THEN 'Truck'
-                WHEN UPPER(TRIM(Vehicle_Type)) IN ('MOTORCYCLE', 'MOTORBIKE', 'BIKE') THEN 'Motorcycle'
-                WHEN UPPER(TRIM(Vehicle_Type)) IN ('BUS', 'MINIBUS', 'COACH') THEN 'Bus'
-                ELSE INITCAP(TRIM(Vehicle_Type))  -- Keep Estate, Hatchback, Sedan etc as-is
-            END AS vehicle_type,
+            -- Use seed table for vehicle_type
+            vm.clean_value AS vehicle_type,
 
 
             CASE
@@ -83,31 +122,15 @@ cleaned AS (
             END AS vehicle_model,
 
             -- Standardise glass type
-            CASE
-                WHEN UPPER(TRIM(Glass_Type)) = 'N/A' THEN NULL
-                WHEN UPPER(TRIM(Glass_Type)) = 'OEM' THEN 'OEM'
-                ELSE INITCAP(TRIM(Glass_Type))
-            END AS glass_type,
+            gltm.clean_value AS glass_type,
 
             -- Standardise window position
-            CASE
-                WHEN UPPER(TRIM(REPLACE(Window_Position, '_', ' '))) IN ('WINDSHIELD', 'WIND SCREEN')
-                    THEN 'Windscreen'
-                WHEN UPPER(TRIM(Window_Position)) = 'N/A'
-                    THEN NULL
-                ELSE INITCAP(TRIM(Window_Position))
-            END AS window_position,
+            wpm.clean_value AS window_position,
 
             -- Standardise damage and repair type
-            CASE
-                WHEN UPPER(TRIM(Damage_Type)) = 'N/A' THEN NULL
-                ELSE INITCAP(TRIM(Damage_Type))
-            END AS damage_type,
+            dtm.clean_value AS damage_type,
 
-            CASE
-                WHEN UPPER(TRIM(Repair_Type)) = 'N/A' THEN NULL
-                ELSE INITCAP(TRIM(Repair_Type))
-            END AS repair_type,
+            rtm.clean_value AS repair_type,
 
             -- Clean and round costs
             {{ clean_currency('repair_cost') }} AS repair_cost,
@@ -189,29 +212,31 @@ cleaned AS (
             vehicle_age_in_years, 
 
             -- Standardize weather conditions and traffic level
-            CASE
-                WHEN LOWER(TRIM(weather_condition)) IN ('n/a', '', 'na') THEN NULL
-                WHEN LOWER(TRIM(weather_condition)) IN ('clear') THEN 'Clear'
-                WHEN LOWER(TRIM(weather_condition)) IN ('rain', 'rainy') THEN 'Rain'
-                WHEN LOWER(TRIM(weather_condition)) IN ('fog', 'foggy') THEN 'Fog'
-                WHEN LOWER(TRIM(weather_condition)) IN ('snow', 'snowy') THEN 'Snow'
-                WHEN LOWER(TRIM(weather_condition)) IN ('windy', 'wind') THEN 'Windy'
-                ELSE INITCAP(TRIM(weather_condition))
-            END AS weather_condition,
+            wcm.clean_value AS weather_condition,
 
-            CASE
-                WHEN TRIM(LOWER(traffic_level)) = 'low' THEN 'Low'
-                WHEN TRIM(LOWER(traffic_level)) = 'medium' THEN 'Medium'
-                WHEN TRIM(LOWER(traffic_level)) = 'high' THEN 'High'
-                WHEN TRIM(LOWER(traffic_level)) = 'heavy' THEN 'Heavy'
-                ELSE NULL
-            END AS traffic_level,
+            tlm.clean_value AS traffic_level,
 
             job_duration_in_hours 
 
         FROM {{ source('raw_repairs_data', 'raw_repairs_data') }} AS source 
         LEFT JOIN region_lookup rl
             ON LOWER(TRIM(source.city)) = rl.city 
+        LEFT JOIN vehicle_map vm
+            ON UPPER(TRIM(source.vehicle_type)) = UPPER(TRIM(vm.raw_value))
+        LEFT JOIN garage_type_map gatm
+            ON UPPER(TRIM(source.garage_type)) = UPPER(TRIM(gatm.raw_value))
+        LEFT JOIN glass_type_map gltm
+            ON UPPER(TRIM(source.glass_type)) = UPPER(TRIM(gltm.raw_value))
+        LEFT JOIN damage_type_map dtm
+            ON UPPER(TRIM(source.damage_type)) = UPPER(TRIM(dtm.raw_value))
+        LEFT JOIN repair_type_map rtm
+            ON UPPER(TRIM(source.repair_type)) = UPPER(TRIM(rtm.raw_value))
+        LEFT JOIN window_position_map wpm
+            ON UPPER(TRIM(source.window_position)) = UPPER(TRIM(wpm.raw_value))
+        LEFT JOIN weather_condition_map wcm
+            ON UPPER(TRIM(source.weather_condition)) = UPPER(TRIM(wcm.raw_value))
+        LEFT JOIN traffic_level_map tlm
+            ON UPPER(TRIM(source.traffic_level)) = UPPER(TRIM(tlm.raw_value))
     )
 )
 
